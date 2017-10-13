@@ -13,7 +13,6 @@ T2: (3,4),(4,6)
 T3: (0,4),(4,6)
 
 Genetic distance is assumed to be 0.1 cM between each marker pair
-Can be instanciated by a @rawphase parameter
 
 '''
 from __future__ import print_function
@@ -27,8 +26,24 @@ test_phase={'T1':[1  ,'*','*',0  ,1,'*',1],
 
 class PhaseData(object):
     ''' 
-Data to test phase inference.
-'''
+    Class to format phase information data into WCSP variables
+    
+    Parameters:
+    -----------
+     -- rawphase: dict of phase info, keys are offspring names, values
+                  are phase vectors (0,1,'*')
+
+     Attributes:
+     -----------
+     -- rawphase: init data
+     -- info_mk: numpy array of informative markers indices
+     -- info_pairs: dict with pairs of inform. markers as keys and [N+,N-] as values.
+
+     TODO:
+     -----
+     -- genetic map
+    
+    '''
     def __init__(self,rawphase):
         self.rawphase=rawphase
         ## info_pairs stores pairs of inform. markers as keys and [N+,N-] as values.
