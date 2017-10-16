@@ -79,8 +79,68 @@ class PhaseData(object):
         assuming each adj. markers are separeted by d (default 0.1) cM
         '''
         dtot=abs(i-j)*d
-        return 0.5*(1-exp(-d/50))
+        return 0.5*(1-np.exp(-d/50))
 
+class PhaseSolver(object):
+    '''
+    A class to Solve the phase of a parent.
+
+    Parameters:
+    -----------
+
+    -- mk_list : list of markers 
+    -- mk_pairs : dict of pairs of markers (see PhaseData class)
+    -- recmap_f : function that takes as input a pair of markers and returns their rec. rate.
+    '''
+    def __init__(self,mk_list,mk_pairs,recmap_f):
+        self.mk=list(mk_list)
+        self.pairs=mk_pairs
+        self.recf=recmap_f
+        self.L=len(self.mk)
+        ## Initialize Optim. model
+        ### Creates an array of phase indicators
+        self.Variables=nj.VarArray(self.L)
+        ### Init model with simple constraint Var[0]==False
+        self.constraints=[self.Variables[0]==0]
+
+    def add_constraints(self):
+        ''' Build constraints from marker pairs 
+        '''
+        for p,Nkl in self.pairs.items():
+            ## gt mk indices
+            k=self.mk.index(p[0])
+            l=self.mk.index(p[1])
+            ## ger recomb rate
+            rkl=self.recf(p[0],p[1])
+            assert rkl>0
+            ## get cost
+            Wkl=(Nkl[0]-Nkl[1])*np.log((1-rkl)/rkl)
+            ## create constraints
+            hk=self.Variables[k]
+            hl=self.Variables[l]
+            if Wkl<0:
+                cost=[-Wkl,0,0,-Wkl]
+            else:
+                cost=[0,Wkl,Wkl,0]
+            cost=[int(x) for x in cost]
+            self.constraints.append(nj.PostBinary(hk,hl,cost))
+        print("Constraints:",*self.constraints,sep='\n')
+
+    def solve(self,verbose=0):
+        model=nj.Model(self.constraints)
+        solver=model.load('Toulbar2')
+        solver.setVerbosity(verbose)
+        solver.setOption('updateUb',str(1000000))
+        solver.setOption('btdMode',1)
+        solver.solve()
+        return [self.Variables[m].get_value() for m in xrange(self.L)]
+            
 if __name__=='__main__':
     T=PhaseData(test_phase)
-    print(*T.info_pairs.items())
+    print("Info pairs:",*T.info_pairs.items())
+    S=PhaseSolver(T.info_mk,T.info_pairs,T.recrate)
+    S.add_constraints()
+    phase=S.solve()
+    print("Resolved phase:",*phase)
+
+
